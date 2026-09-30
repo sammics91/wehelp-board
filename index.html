@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>後端練習用圖文留言板</title>
+    <style>
+        .main {
+            width: 800px;
+            padding: 10px;
+            margin: auto;
+            border: 1px solid #ccc;
+        }
+
+        label {display: block;}
+
+        p {margin: 0px;}
+
+        hr {margin: 9px 0 14px;}
+
+        .post img {
+            max-height: 91px;
+            max-width: 100%;
+            width: auto;
+            height: auto;
+        }
+
+    </style>
+</head>
+<body>
+    <div class="main">
+        <form action="/api/posts" method="post" enctype="multipart/form-data">
+            <section class="form-section">
+                <h2>發表一篇圖文</h2>
+                <label>文字內容
+                    <input
+                        id="comment-message"
+                        type="text"
+                        name="message"
+                        placeholder="留言並選擇一張圖片送出。"
+                        maxlength="30"
+                        required
+                    >
+                </label>
+
+                <label>圖片檔案
+                    <input
+                        id="image-file"
+                        type="file"
+                        name="image"
+                        required
+                    >
+                </label>
+
+                <button type="submit">
+                    送出
+                </button>
+            </section>
+        </form>
+
+        <hr>
+
+        <div class="posts">
+            <div class="post" hidden>
+                <p>留言文字內容</p>
+                <img src="" alt="圖片">
+                <hr>
+            </div>
+
+        </div>
+    </div>
+
+    <script>
+        async function loadPosts() {
+            const response = await fetch("/api/posts");
+            const data = await response.json();
+
+            const postsContainer = document.querySelector(".posts");
+            postsContainer.replaceChildren();
+
+            for (const post of data.posts){
+                const postElement = document.createElement("div");
+                postElement.className = "post";
+
+                const messageElement = document.createElement("p");
+                messageElement.textContent = post.message;
+                postElement.appendChild(messageElement);
+
+                const imageElement = document.createElement("img");
+                imageElement.src = `http://d2eh6mg11y65fb.cloudfront.net/${post.image_key}`;
+                imageElement.alt = "留言附圖";
+                postElement.appendChild(imageElement);
+
+                const hrElement = document.createElement("hr");
+                postElement.appendChild(hrElement);
+
+                postsContainer.appendChild(postElement);
+            }
+        }
+
+        loadPosts();
+
+        const form = document.querySelector("form");
+
+        form.addEventListener("submit", async function (event) {
+            event.preventDefault();
+
+            const submitButton = form.querySelector('button[type="submit"]');
+            submitButton.disabled = true;
+            submitButton.textContent = "送出中...";
+
+            try{
+                const formData = new FormData(form);
+                const response = await fetch("/api/posts", {
+                    method: "POST",
+                    body: formData
+                });
+
+                const result = await response.json();
+                console.log(response.status, result);
+
+                if (!response.ok) {
+                    alert(result.detail || "送出失敗");
+                    return;
+                }
+
+                form.reset();
+                await loadPosts();
+            } catch (error){
+                console.error(error);
+                alert("送出時發生錯誤，請先重新整理確認留言是否已新增。");
+            } finally {
+                submitButton.disabled = false;
+                submitButton.textContent = "送出";
+            }
+        });
+    </script>
+</body>
+</html>
